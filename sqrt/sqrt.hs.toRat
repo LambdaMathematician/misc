@@ -1,0 +1,64 @@
+import Test.QuickCheck
+import Data.Ratio
+import Data.List.Split
+
+eps=2.22e-16::RealFrac a => a
+
+-- Newton's method for approximating a square root
+x_nplus1 :: Rational -> Rational -> Rational
+x_nplus1 radicand xn = (xn + radicand/xn)/2
+
+-- Do newton's method until you get within the error.
+ratSqrt :: Rational -> Rational -> Rational
+ratSqrt 0 _ = 0
+ratSqrt x eps = until (\a -> (squaresError x a < eps^2)) (x_nplus1 x) (initialGuess x)
+
+initialGuess :: Rational -> Rational
+initialGuess x = max 1 (toRational $ squareRoot $ floor $ fromRational x)
+
+squaresError :: Rational -> Rational -> Rational
+squaresError radicand approximateSqrt = abs (radicand - approximateSqrt^2)
+
+prop_ratSqrt :: Rational -> Property
+prop_ratSqrt x = (x >= 0) ==> (abs (x - (ratSqrt x eps)^2) <= eps^2 )
+
+-- Check to see if it aligns with the built-in square root function
+prop_eq_sqrt :: Rational -> Property
+prop_eq_sqrt = undefined
+--prop_eq_sqrt x = (x >= 0)  ==> ((sqrt $ fromRational x) - (fromRational $ ratSqrt x 1e-16) < eps)
+
+-- Might have to roll my own toRational function...
+toRat :: (Show a, RealFrac a) => a -> Rational
+toRat x = allDigits % denom * 10^^exponent
+  where
+    digits:e = splitOn "e" (show x)
+    whole:dec = splitOn "." digits
+    allDigits = read (whole ++ head dec)::Integer
+    denom = 10^(toInteger $ length $ head dec)
+    exponent
+      | length e == 0 = 0::Integer
+      | otherwise     = read (head e)::Integer
+
+prop_rat :: (Show a, RealFrac a) => a -> Bool
+prop_rat x = x == fromRational (toRat x)
+
+mapT f (x,y) = (f x, f y)
+
+
+deepCheck prop num = quickCheckWith (stdArgs {maxSuccess = num}) prop
+-- Integer sqrt stolen from haskell wiki
+-- https://wiki.haskell.org/Generic_number_type#squareRoot
+(^!) :: Num a => a -> Int -> a
+(^!) x n = x^n
+
+squareRoot :: Integer -> Integer
+squareRoot 0 = 0
+squareRoot 1 = 1
+squareRoot n =
+   let twopows = iterate (^!2) 2
+       (lowerRoot, lowerN) =
+          last $ takeWhile ((n>=) . snd) $ zip (1:twopows) twopows
+       newtonStep x = div (x + div n x) 2
+       iters = iterate newtonStep (squareRoot (div n lowerN) * lowerRoot)
+       isRoot r  =  r^!2 <= n && n < (r+1)^!2
+   in  head $ dropWhile (not . isRoot) iters
