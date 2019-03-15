@@ -2,7 +2,7 @@ import Test.QuickCheck
 import Data.Ratio
 import Data.List.Split
 
-eps=2.22e-16::Rational
+eps=1e-15::Rational
 
 -- Newton's method for approximating a square root
 x_nplus1 :: Rational -> Rational -> Rational
@@ -10,13 +10,14 @@ x_nplus1 radicand xn = (xn + radicand/xn)/2
 
 -- Do newton's method until you get within the error.
 --ratSqrt :: Rational -> Rational -> Rational
-ratSqrt 0 _ = [0]
-ratSqrt x eps = takeWhile (not.withinError) $ iterate f init
---ratSqrt x eps = until withinError f init
+--ratSqrt 0 _ = [0]
+--ratSqrt x eps = takeWhile (not.withinError) $ iterate f init
+ratSqrt 0 _ = 0
+ratSqrt x eps = until withinError f init
   where
     withinError a = squaresError x a < eps^2
     f::Rational -> Rational
-    f = (flip trimRat eps).(x_nplus1 x)
+    f = (flip trimRat (eps^2)).(x_nplus1 x)
     init = initialGuess x
 initialGuess :: Rational -> Rational
 initialGuess x = 1 + (toRational $ intSqrt $ floor $ fromRational x)
@@ -24,38 +25,42 @@ initialGuess x = 1 + (toRational $ intSqrt $ floor $ fromRational x)
 squaresError :: Rational -> Rational -> Rational
 squaresError radicand approximateSqrt = abs (radicand - approximateSqrt^2)
 
---prop_ratSqrt :: Rational -> Property
---prop_ratSqrt x = (x >= 0) ==> (abs (x - (ratSqrt x eps)^2) <= eps^2 )
+prop_ratSqrt :: Rational -> Property
+prop_ratSqrt x = (x >= 0) ==> (abs (x - (ratSqrt x eps)^2) <= eps^2 )
 
 -- Check to see if it aligns with the built-in square root function
---prop_eq_sqrt :: Rational -> Property
---prop_eq_sqrt = undefined
---prop_eq_sqrt x = (x >= 0)  ==> ((sqrt $ fromRational x) - (fromRational $ ratSqrt x 1e-16) < eps)
+-- This fails from time to time, mostly because the haskell (c) sqrt
+-- is bad. 18%1 and 257%1 for example will fail.
+prop_eq_sqrt :: Rational -> Property
+prop_eq_sqrt x = (x >= 0)  ==> abs( haskSqrt - mySqrt) < eps
+  where
+    haskSqrt = toRational $ sqrt $ fromRational x 
+    mySqrt = ratSqrt x eps
 
 -- Might have to roll my own toRational function...
 mapT f (x,y) = (f x, f y)
 
 --trimRat' :: (Integer, Integer) -> Rational -> (Integer, Integer)
 --trimRat' (n,d) eps = last $ takeWhile withinError (truncateRatio (n,d))
-trimRat' (n,d) eps = undefined
---  where
---    withinError (a,b) = abs (a%b - n%d) < eps
 
-truncateRatio (a,b)
-  | (abs a) < 10 || b < 10 = []
-  | otherwise = (a,b):truncateRatio (div a 10, div b 10)
+trimRat' (a,b)
+  | b < 10 = [(a,b)]
+  | otherwise = (a,b):trimRat' (div a 10, div b 10)
 
 --trimRat :: Rational -> Rational -> Rational
 --trimRat x eps = a%b
-trimRat x eps = undefined
+trimRat x eps = n%d
   where
-    (a,b) = trimRat' (numerator x, denominator x) eps
+    (n,d) = last $ takeWhile withinError $ trimRat' (numerator x, denominator x)
+    withinError (a,b) = abs (a%b - x) < eps
 
 prop_trim x = x - (trimRat x eps) < eps
 
 dumbRat x = x::Rational
 
 deepCheck prop num = quickCheckWith (stdArgs {maxSuccess = num}) prop
+deepVerboseCheck prop num = verboseCheckWith (stdArgs {maxSuccess = num}) prop
+
 -- Integer sqrt stolen from haskell wiki
 -- https://wiki.haskell.org/Generic_number_type#squareRoot
 (^!) :: Num a => a -> Int -> a
