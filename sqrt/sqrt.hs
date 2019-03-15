@@ -9,9 +9,9 @@ x_nplus1 :: Rational -> Rational -> Rational
 x_nplus1 radicand xn = (xn + radicand/xn)/2
 
 -- Do newton's method until you get within the error.
---ratSqrt :: Rational -> Rational -> Rational
 --ratSqrt 0 _ = [0]
 --ratSqrt x eps = takeWhile (not.withinError) $ iterate f init
+ratSqrt :: Rational -> Rational -> Rational
 ratSqrt 0 _ = 0
 ratSqrt x eps = until withinError f init
   where
@@ -40,15 +40,13 @@ prop_eq_sqrt x = (x >= 0)  ==> abs( haskSqrt - mySqrt) < eps
 -- Might have to roll my own toRational function...
 mapT f (x,y) = (f x, f y)
 
---trimRat' :: (Integer, Integer) -> Rational -> (Integer, Integer)
---trimRat' (n,d) eps = last $ takeWhile withinError (truncateRatio (n,d))
 
+trimRat' :: (Integer, Integer) -> Rational -> [(Integer, Integer)]
 trimRat' (a,b)
   | b < 10 = [(a,b)]
   | otherwise = (a,b):trimRat' (div a 10, div b 10)
 
---trimRat :: Rational -> Rational -> Rational
---trimRat x eps = a%b
+trimRat :: Rational -> Rational -> Rational
 trimRat x eps = n%d
   where
     (n,d) = last $ takeWhile withinError $ trimRat' (numerator x, denominator x)
