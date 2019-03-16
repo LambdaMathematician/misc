@@ -41,7 +41,7 @@ prop_eq_sqrt x = (x >= 0)  ==> abs( haskSqrt - mySqrt) < eps
 mapT f (x,y) = (f x, f y)
 
 
-trimRat' :: (Integer, Integer) -> Rational -> [(Integer, Integer)]
+trimRat' :: (Integer, Integer) -> [(Integer, Integer)]
 trimRat' (a,b)
   | b < 10 = [(a,b)]
   | otherwise = (a,b):trimRat' (div a 10, div b 10)
