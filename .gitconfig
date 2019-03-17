@@ -1,7 +1,0 @@
-[user]
-	email = me@home.com
-	name = me
-[core]
-	editr = vim
-[alias]
-	rekt = reset --hard HEAD
